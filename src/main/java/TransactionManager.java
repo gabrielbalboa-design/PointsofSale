@@ -12,16 +12,16 @@ public class TransactionManager {
         System.out.println(t);
     }
 
-    public static void processSale(Item item, int quantity){
+    public static boolean processSale(Item item, int quantity){
 
         if (item == null) {
             System.out.println("Product not found.");
-            return;
+            return false;
         }
 
         if (!item.reduceStock(quantity)) {
-            System.out.println("Not enough stock.");
-            return;
+            System.out.println("Not enough stock for " + item.name);
+            return false;
         }
 
         double total = item.price * quantity;
@@ -30,6 +30,8 @@ public class TransactionManager {
         transactions.add(t);
 
         System.out.println("Sale successful: " + t);
+
+        return true;
     }
 
     public static void processSale(ObservableList<Item> inventory, String name, int amount) {

@@ -432,8 +432,13 @@ public class Dashboard {
 
                     int qty = cart.get(item);
 
-                    TransactionManager.processSale(item, qty);
-                    totalBill += item.price * qty;
+                    boolean success = TransactionManager.processSale(item, qty);
+
+                    if(success){
+                        totalBill += item.price * qty;
+                    } else {
+                        showError("Not enough stock for " + item.name);
+                    }
                 }
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
