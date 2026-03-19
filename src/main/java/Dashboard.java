@@ -1,3 +1,5 @@
+// (imports unchanged)
+
 import javafx.collections.*;
 import javafx.collections.transformation.FilteredList;
 import javafx.scene.control.*;
@@ -23,8 +25,6 @@ public class Dashboard {
     public Dashboard(UserRole role){
 
         root = new BorderPane();
-
-        /* ---------- TABLE + SEARCH ---------- */
 
         TextField searchField = new TextField();
         searchField.setPromptText("Search product...");
@@ -55,14 +55,11 @@ public class Dashboard {
                     btn.setText(supplier);
 
                     btn.setOnAction(e -> {
-
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
                         alert.setTitle("Supplier Information");
                         alert.setHeaderText(item.supplier);
                         alert.setContentText("Contact: " + item.supplierContact);
-
                         alert.showAndWait();
-
                     });
 
                     setGraphic(btn);
@@ -82,29 +79,60 @@ public class Dashboard {
         totalCol.setCellValueFactory(data ->
                 new SimpleDoubleProperty(data.getValue().getTotalValue()).asObject());
 
-        table.getColumns().addAll(nameCol, supplierCol, priceCol, qtyCol, totalCol);
+        TableColumn<Item, Void> actionCol = new TableColumn<>("Actions");
+
+        actionCol.setCellFactory(col -> new TableCell<>() {
+
+            private final Button plus = new Button("+");
+            private final Button minus = new Button("-");
+            private final HBox box = new HBox(5, plus, minus);
+
+            {
+                plus.setOnAction(e -> {
+                    Item item = getTableView().getItems().get(getIndex());
+
+                    StockEditor.stockIn(item);
+
+                    table.refresh();
+                    updateTotalValue();
+                    BackupManager.saveBackup(inventory);
+                });
+
+                minus.setOnAction(e -> {
+                    Item item = getTableView().getItems().get(getIndex());
+
+                    StockEditor.stockOut(item);
+
+                    table.refresh();
+                    updateTotalValue();
+                    BackupManager.saveBackup(inventory);
+                    LowStockAlert.checkLowStock(inventory);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty){
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : box);
+            }
+        });
+
+        table.getColumns().addAll(nameCol, supplierCol, priceCol, qtyCol, totalCol, actionCol);
 
         FilteredList<Item> filteredInventory = new FilteredList<>(inventory, p -> true);
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-
             filteredInventory.setPredicate(item -> {
-
                 if (newVal == null || newVal.isEmpty()) return true;
-
                 return item.name.toLowerCase().contains(newVal.toLowerCase());
-
             });
-
         });
 
         table.setItems(filteredInventory);
 
         table.setRowFactory(tv -> new TableRow<Item>() {
-
             @Override
             protected void updateItem(Item item, boolean empty){
-
                 super.updateItem(item, empty);
 
                 if(item == null || empty){
@@ -119,28 +147,15 @@ public class Dashboard {
             }
         });
 
-        /* ---------- SIDEBAR TOGGLE ---------- */
-
         Button toggleSidebarBtn = new Button("☰");
         toggleSidebarBtn.setOnAction(e -> toggleSidebar());
 
-        mainContent = new VBox(
-                10,
-                toggleSidebarBtn,
-                searchField,
-                table,
-                totalInventoryValue
-        );
-
+        mainContent = new VBox(10, toggleSidebarBtn, searchField, table, totalInventoryValue);
         root.setCenter(mainContent);
-
-        /* ---------- SIDEBAR ---------- */
 
         sidebar = new VBox(10);
         sidebar.setPrefWidth(180);
         sidebar.setStyle("-fx-padding:10; -fx-background-color:#eeeeee;");
-
-        /* ---------- PRODUCTS ---------- */
 
         Button productBtn = new Button("📦 Products");
 
@@ -148,12 +163,14 @@ public class Dashboard {
 
         Button addProductBtn = new Button("Add Product");
         Button stockInBtn = new Button("Stock In");
+        Button sellBtn = new Button("Sell"); // 🔥 MULTI SELL
         Button stockOutBtn = new Button("Stock Out");
         Button deleteBtn = new Button("Delete Product");
 
         productMenuBox.getChildren().addAll(
                 addProductBtn,
                 stockInBtn,
+                sellBtn,
                 stockOutBtn,
                 deleteBtn
         );
@@ -162,28 +179,20 @@ public class Dashboard {
         productMenuBox.setManaged(false);
 
         productBtn.setOnAction(e -> {
-
             boolean visible = productMenuBox.isVisible();
-
             productMenuBox.setVisible(!visible);
             productMenuBox.setManaged(!visible);
-
         });
-
-        /* ---------- ROLE RESTRICTIONS ---------- */
 
         if(role == UserRole.STAFF || role == UserRole.MANAGER){
             deleteBtn.setDisable(true);
         }
 
-        /* ---------- BUTTON ACTIONS ---------- */
-
         addProductBtn.setOnAction(e -> addProduct());
         stockInBtn.setOnAction(e -> stockIn());
+        sellBtn.setOnAction(e -> sellItem()); // 🔥 MULTI SELL
         stockOutBtn.setOnAction(e -> stockOut());
         deleteBtn.setOnAction(e -> deleteProduct());
-
-        /* ---------- REPORT ---------- */
 
         Button reportBtn = new Button("📊 Reports");
         reportBtn.setOnAction(e -> ReportGenerator.generateReport(inventory));
@@ -192,69 +201,42 @@ public class Dashboard {
             reportBtn.setDisable(true);
         }
 
-        /* ---------- LOGOUT BUTTON ---------- */
-
         Button logoutBtn = new Button("🚪 Logout");
 
         logoutBtn.setOnAction(e -> {
-
             Stage stage = (Stage) root.getScene().getWindow();
             stage.setScene(LoginScreen.createLoginScene(stage));
-
         });
 
-        sidebar.getChildren().addAll(
-                productBtn,
-                productMenuBox,
-                reportBtn,
-                logoutBtn
-        );
-
-        /* ---------- ADMIN PANEL ---------- */
+        sidebar.getChildren().addAll(productBtn, productMenuBox, reportBtn, logoutBtn);
 
         if(role == UserRole.ADMIN){
 
             Button userBtn = new Button("👥 Users");
 
             userBtn.setOnAction(e -> {
-
                 VBox adminPanel = UserManagement.createPanel();
 
                 Button backBtn = new Button("⬅ Back to Dashboard");
-
                 backBtn.setOnAction(ev -> root.setCenter(mainContent));
 
                 VBox wrapper = new VBox(10, backBtn, adminPanel);
-
                 root.setCenter(wrapper);
-
             });
 
             sidebar.getChildren().add(userBtn);
-
         }
 
         root.setLeft(sidebar);
 
-        /* ---------- LOAD DATA ---------- */
-
         BackupLoader.loadBackup(inventory);
 
         updateTotalValue();
-
         LowStockAlert.checkLowStock(inventory);
     }
 
-    /* ---------- SIDEBAR COLLAPSE ---------- */
-
     private void toggleSidebar(){
-
-        if(sidebarCollapsed){
-            sidebar.setPrefWidth(180);
-        }else{
-            sidebar.setPrefWidth(60);
-        }
-
+        sidebar.setPrefWidth(sidebarCollapsed ? 180 : 60);
         sidebarCollapsed = !sidebarCollapsed;
     }
 
@@ -262,10 +244,7 @@ public class Dashboard {
         return root;
     }
 
-    /* ---------- ADD PRODUCT ---------- */
-
     private void addProduct(){
-
         Dialog<Item> dialog = new Dialog<>();
         dialog.setTitle("Add Product");
 
@@ -284,47 +263,35 @@ public class Dashboard {
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
-
         grid.add(new Label("Supplier:"), 0, 1);
         grid.add(supplierField, 1, 1);
-
         grid.add(new Label("Contact:"), 0, 2);
         grid.add(contactField, 1, 2);
-
         grid.add(new Label("Price:"), 0, 3);
         grid.add(priceField, 1, 3);
-
         grid.add(new Label("Quantity:"), 0, 4);
         grid.add(qtyField, 1, 4);
 
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(dialogButton -> {
-
             if(dialogButton == addButton){
-
                 try{
-
-                    String name = nameField.getText();
-                    String supplier = supplierField.getText();
-                    String contact = contactField.getText();
-
-                    double price = Double.parseDouble(priceField.getText());
-                    int quantity = Integer.parseInt(qtyField.getText());
-
-                    return new Item(name, supplier, contact, quantity, price);
-
+                    return new Item(
+                            nameField.getText(),
+                            supplierField.getText(),
+                            contactField.getText(),
+                            Integer.parseInt(qtyField.getText()),
+                            Double.parseDouble(priceField.getText())
+                    );
                 }catch(Exception e){
                     showError("Invalid price or quantity.");
                 }
             }
-
             return null;
         });
 
-        Optional<Item> result = dialog.showAndWait();
-
-        result.ifPresent(item -> {
+        dialog.showAndWait().ifPresent(item -> {
             inventory.add(item);
             updateTotalValue();
             BackupManager.saveBackup(inventory);
@@ -332,41 +299,162 @@ public class Dashboard {
     }
 
     private void stockIn(){
-
         Item selected = table.getSelectionModel().getSelectedItem();
-
-        if(selected == null){
-            showError("Please select a product.");
-            return;
-        }
-
+        if(selected == null){ showError("Please select a product."); return; }
         StockEditor.stockIn(selected);
-
         table.refresh();
         updateTotalValue();
     }
 
     private void stockOut(){
-
         Item selected = table.getSelectionModel().getSelectedItem();
-
-        if(selected == null){
-            showError("Please select a product.");
-            return;
-        }
-
+        if(selected == null){ showError("Please select a product."); return; }
         StockEditor.stockOut(selected);
-
         table.refresh();
         updateTotalValue();
         BackupManager.saveBackup(inventory);
         LowStockAlert.checkLowStock(inventory);
     }
 
+    private void sellItem(){
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Process Sale");
+
+        VBox content = new VBox(10);
+
+        // 🔽 Supplier dropdown
+        ComboBox<String> supplierBox = new ComboBox<>();
+
+        // 🔽 Item dropdown
+        ComboBox<Item> itemBox = new ComboBox<>();
+
+        // 🔢 Quantity input
+        TextField qtyField = new TextField();
+        qtyField.setPromptText("Quantity");
+
+        // 🛒 Cart display
+        TextArea cartArea = new TextArea();
+        cartArea.setEditable(false);
+
+        // store cart
+        java.util.Map<Item, Integer> cart = new java.util.HashMap<>();
+
+        // 🔥 Fill suppliers
+        for(Item item : inventory){
+            if(!supplierBox.getItems().contains(item.supplier)){
+                supplierBox.getItems().add(item.supplier);
+            }
+        }
+
+        // 🔄 When supplier selected → filter items
+        supplierBox.setOnAction(e -> {
+            itemBox.getItems().clear();
+
+            for(Item item : inventory){
+                if(item.supplier.equals(supplierBox.getValue())){
+                    itemBox.getItems().add(item);
+                }
+            }
+        });
+
+        // 🔥 Display item names nicely
+        itemBox.setCellFactory(lv -> new ListCell<Item>() {
+            @Override
+            protected void updateItem(Item item, boolean empty){
+                super.updateItem(item, empty);
+                setText(empty ? "" : item.name + " (Stock: " + item.quantity + ")");
+            }
+        });
+
+        itemBox.setButtonCell(new ListCell<Item>() {
+            @Override
+            protected void updateItem(Item item, boolean empty){
+                super.updateItem(item, empty);
+                setText(empty ? "" : item.name);
+            }
+        });
+
+        // ➕ Add to cart button
+        Button addBtn = new Button("➕ Add Item");
+
+        addBtn.setOnAction(e -> {
+
+            Item selectedItem = itemBox.getValue();
+
+            if(selectedItem == null){
+                showError("Select an item.");
+                return;
+            }
+
+            try{
+                int qty = Integer.parseInt(qtyField.getText());
+
+                if(qty <= 0){
+                    showError("Invalid quantity.");
+                    return;
+                }
+
+                cart.put(selectedItem, cart.getOrDefault(selectedItem, 0) + qty);
+
+                // update cart display
+                cartArea.clear();
+
+                for(Item i : cart.keySet()){
+                    cartArea.appendText(i.name + " x" + cart.get(i) + "\n");
+                }
+
+                qtyField.clear();
+
+            }catch(Exception ex){
+                showError("Enter valid number.");
+            }
+        });
+
+        content.getChildren().addAll(
+                new Label("Supplier:"), supplierBox,
+                new Label("Item:"), itemBox,
+                new Label("Quantity:"), qtyField,
+                addBtn,
+                new Label("Cart:"), cartArea
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(btn -> {
+
+            if(btn == ButtonType.OK){
+
+                double totalBill = 0;
+
+                for(Item item : cart.keySet()){
+
+                    int qty = cart.get(item);
+
+                    TransactionManager.processSale(item, qty);
+                    totalBill += item.price * qty;
+                }
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setHeaderText("Sale Completed");
+                alert.setContentText("Total Bill: ₱" + totalBill);
+                alert.showAndWait();
+
+                table.refresh();
+                updateTotalValue();
+                BackupManager.saveBackup(inventory);
+                LowStockAlert.checkLowStock(inventory);
+            }
+
+            return null;
+        });
+
+        dialog.showAndWait();
+    }
+
     private void deleteProduct(){
-
         Item selected = table.getSelectionModel().getSelectedItem();
-
         if(selected != null){
             inventory.remove(selected);
             updateTotalValue();
@@ -377,18 +465,14 @@ public class Dashboard {
     }
 
     private void updateTotalValue(){
-
         double total = 0;
-
         for(Item item : inventory){
             total += item.getTotalValue();
         }
-
         totalInventoryValue.setText("Total Inventory Value: ₱" + total);
     }
 
     private void showError(String message){
-
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setHeaderText(message);
         alert.showAndWait();

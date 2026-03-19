@@ -9,6 +9,8 @@ public class Item {
 
     int minStock = 10;
 
+    int soldCount = 0;
+
     public Item(String name, String supplier, String supplierContact, int quantity, double price){
 
         this.name = name;
@@ -25,6 +27,19 @@ public class Item {
 
     public double getTotalValue(){
         return quantity * price;
+    }
+
+    public boolean reduceStock(int amount) {
+        if (quantity >= amount) {
+            quantity -= amount;
+            soldCount += amount;
+            return true;
+        }
+        return false;
+    }
+
+    public void addStock(int amount) {
+        quantity += amount;
     }
 
 }

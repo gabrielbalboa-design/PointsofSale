@@ -1,6 +1,9 @@
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert;
+
+import java.util.ArrayList;
 import java.util.Optional;
+import javafx.collections.ObservableList;
 
 public class StockEditor {
 
@@ -13,10 +16,9 @@ public class StockEditor {
         Optional<String> result = dialog.showAndWait();
 
         if(result.isPresent()){
-
             int amount = Integer.parseInt(result.get());
 
-            item.quantity += amount;
+            item.addStock(amount);
 
             TransactionManager.log("STOCK IN", item.name, amount);
         }
@@ -31,7 +33,6 @@ public class StockEditor {
         Optional<String> result = dialog.showAndWait();
 
         if(result.isPresent()){
-
             int amount = Integer.parseInt(result.get());
 
             if(item.quantity >= amount){
@@ -41,12 +42,25 @@ public class StockEditor {
                 TransactionManager.log("STOCK OUT", item.name, amount);
 
             }else{
-
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setHeaderText("Not enough stock.");
                 alert.showAndWait();
-
             }
+        }
+    }
+
+    public static void sellItem(ObservableList<Item> inventory, Item item){
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Sell Item");
+        dialog.setHeaderText("Enter quantity to sell");
+
+        Optional<String> result = dialog.showAndWait();
+
+        if(result.isPresent()){
+            int amount = Integer.parseInt(result.get());
+
+            TransactionManager.processSale((ObservableList<Item>) inventory, item.name, amount);
         }
     }
 }
