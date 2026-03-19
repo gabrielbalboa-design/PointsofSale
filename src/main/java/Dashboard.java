@@ -1,5 +1,3 @@
-// (imports unchanged)
-
 import javafx.collections.*;
 import javafx.collections.transformation.FilteredList;
 import javafx.scene.control.*;
