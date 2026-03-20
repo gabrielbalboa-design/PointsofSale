@@ -8,17 +8,14 @@ public class Item {
     double price;
 
     int minStock = 10;
-
     int soldCount = 0;
 
     public Item(String name, String supplier, String supplierContact, int quantity, double price){
-
         this.name = name;
         this.supplier = supplier;
         this.supplierContact = supplierContact;
         this.quantity = quantity;
         this.price = price;
-
     }
 
     public boolean isLowStock(){
@@ -42,4 +39,15 @@ public class Item {
         quantity += amount;
     }
 
+    public int getQuantity(){
+        return quantity;
+    }
+
+    public double getPrice(){
+        return price;
+    }
+
+    public String getName(){
+        return name;
+    }
 }

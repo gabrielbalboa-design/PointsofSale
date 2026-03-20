@@ -4,13 +4,17 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.stage.Stage;
-import java.util.Optional;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 
 public class Dashboard {
 
     BorderPane root;
 
     TableView<Item> table = new TableView<>();
+    TableView<Transaction> transactionTable = new TableView<>();
+
     ObservableList<Item> inventory = FXCollections.observableArrayList();
     Label totalInventoryValue = new Label();
 
@@ -35,36 +39,6 @@ public class Dashboard {
         supplierCol.setCellValueFactory(data ->
                 new javafx.beans.property.SimpleStringProperty(data.getValue().supplier));
 
-        supplierCol.setCellFactory(col -> new TableCell<Item,String>() {
-
-            private final Button btn = new Button();
-
-            @Override
-            protected void updateItem(String supplier, boolean empty) {
-
-                super.updateItem(supplier, empty);
-
-                if (empty) {
-                    setGraphic(null);
-                } else {
-
-                    Item item = getTableView().getItems().get(getIndex());
-
-                    btn.setText(supplier);
-
-                    btn.setOnAction(e -> {
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setTitle("Supplier Information");
-                        alert.setHeaderText(item.supplier);
-                        alert.setContentText("Contact: " + item.supplierContact);
-                        alert.showAndWait();
-                    });
-
-                    setGraphic(btn);
-                }
-            }
-        });
-
         TableColumn<Item,Double> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(data ->
                 new SimpleDoubleProperty(data.getValue().price).asObject());
@@ -85,27 +59,62 @@ public class Dashboard {
             private final Button minus = new Button("-");
             private final HBox box = new HBox(5, plus, minus);
 
+            private Timeline plusTimer;
+            private Timeline minusTimer;
+
             {
-                plus.setOnAction(e -> {
+                plus.setOnMousePressed(e -> {
                     Item item = getTableView().getItems().get(getIndex());
 
-                    StockEditor.stockIn(item);
+                    item.addStock(1);
+                    table.refresh();
+                    updateTotalValue();
+
+                    plusTimer = new Timeline(new KeyFrame(Duration.millis(80), ev -> {
+                        item.addStock(1);
+                        table.refresh();
+                        updateTotalValue();
+                    }));
+
+                    plusTimer.setCycleCount(Timeline.INDEFINITE);
+                    plusTimer.play();
+                });
+
+                plus.setOnMouseReleased(e -> stopPlus());
+                plus.setOnMouseExited(e -> stopPlus());
+
+                minus.setOnMousePressed(e -> {
+                    Item item = getTableView().getItems().get(getIndex());
+
+                    if(item.quantity > 0){
+                        item.quantity -= 1;
+                    }
 
                     table.refresh();
                     updateTotalValue();
-                    BackupManager.saveBackup(inventory);
+
+                    minusTimer = new Timeline(new KeyFrame(Duration.millis(80), ev -> {
+                        if(item.quantity > 0){
+                            item.quantity -= 1;
+                        }
+                        table.refresh();
+                        updateTotalValue();
+                    }));
+
+                    minusTimer.setCycleCount(Timeline.INDEFINITE);
+                    minusTimer.play();
                 });
 
-                minus.setOnAction(e -> {
-                    Item item = getTableView().getItems().get(getIndex());
+                minus.setOnMouseReleased(e -> stopMinus());
+                minus.setOnMouseExited(e -> stopMinus());
+            }
 
-                    StockEditor.stockOut(item);
+            private void stopPlus(){
+                if(plusTimer != null) plusTimer.stop();
+            }
 
-                    table.refresh();
-                    updateTotalValue();
-                    BackupManager.saveBackup(inventory);
-                    LowStockAlert.checkLowStock(inventory);
-                });
+            private void stopMinus(){
+                if(minusTimer != null) minusTimer.stop();
             }
 
             @Override
@@ -116,6 +125,10 @@ public class Dashboard {
         });
 
         table.getColumns().addAll(nameCol, supplierCol, priceCol, qtyCol, totalCol, actionCol);
+
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        table.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(table, Priority.ALWAYS);
 
         FilteredList<Item> filteredInventory = new FilteredList<>(inventory, p -> true);
 
@@ -145,10 +158,40 @@ public class Dashboard {
             }
         });
 
+        TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(data ->
+                new javafx.beans.property.SimpleStringProperty(data.getValue().type));
+
+        TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
+        productCol.setCellValueFactory(data ->
+                new javafx.beans.property.SimpleStringProperty(data.getValue().product));
+
+        TableColumn<Transaction, Integer> amountCol = new TableColumn<>("Qty");
+        amountCol.setCellValueFactory(data -> {
+            return new javafx.beans.property.SimpleIntegerProperty(data.getValue().amount).asObject();
+        });
+
+        TableColumn<Transaction, Double> totalSaleCol = new TableColumn<>("Total");
+        totalSaleCol.setCellValueFactory(data ->
+                new SimpleDoubleProperty(data.getValue().total).asObject());
+
+        transactionTable.getColumns().addAll(typeCol, productCol, amountCol, totalSaleCol);
+        transactionTable.setItems(TransactionManager.transactions);
+        transactionTable.setPrefHeight(150);
+
         Button toggleSidebarBtn = new Button("☰");
         toggleSidebarBtn.setOnAction(e -> toggleSidebar());
 
-        mainContent = new VBox(10, toggleSidebarBtn, searchField, table, totalInventoryValue);
+        mainContent = new VBox(
+                10,
+                toggleSidebarBtn,
+                searchField,
+                table,
+                new Label("Transactions"),
+                transactionTable,
+                totalInventoryValue
+        );
+
         root.setCenter(mainContent);
 
         sidebar = new VBox(10);
@@ -161,16 +204,12 @@ public class Dashboard {
 
         Button addProductBtn = new Button("Add Product");
         Button stockInBtn = new Button("Stock In");
-        Button sellBtn = new Button("Sell"); // 🔥 MULTI SELL
+        Button sellBtn = new Button("Sell");
         Button stockOutBtn = new Button("Stock Out");
         Button deleteBtn = new Button("Delete Product");
 
         productMenuBox.getChildren().addAll(
-                addProductBtn,
-                stockInBtn,
-                sellBtn,
-                stockOutBtn,
-                deleteBtn
+                addProductBtn, stockInBtn, sellBtn, stockOutBtn, deleteBtn
         );
 
         productMenuBox.setVisible(false);
@@ -182,22 +221,35 @@ public class Dashboard {
             productMenuBox.setManaged(!visible);
         });
 
-        if(role == UserRole.STAFF || role == UserRole.MANAGER){
-            deleteBtn.setDisable(true);
-        }
-
         addProductBtn.setOnAction(e -> addProduct());
-        stockInBtn.setOnAction(e -> stockIn());
-        sellBtn.setOnAction(e -> sellItem()); // 🔥 MULTI SELL
-        stockOutBtn.setOnAction(e -> stockOut());
+
+        stockInBtn.setOnAction(e -> {
+            Item selected = table.getSelectionModel().getSelectedItem();
+            if(selected != null){
+                StockEditor.stockInWithInput(selected);
+                table.refresh();
+                updateTotalValue();
+            } else {
+                showError("Please select a product.");
+            }
+        });
+
+        stockOutBtn.setOnAction(e -> {
+            Item selected = table.getSelectionModel().getSelectedItem();
+            if(selected != null){
+                StockEditor.stockOutWithInput(selected);
+                table.refresh();
+                updateTotalValue();
+            } else {
+                showError("Please select a product.");
+            }
+        });
+
+        sellBtn.setOnAction(e -> sellItem());
         deleteBtn.setOnAction(e -> deleteProduct());
 
         Button reportBtn = new Button("📊 Reports");
         reportBtn.setOnAction(e -> ReportGenerator.generateReport(inventory));
-
-        if(role == UserRole.STAFF){
-            reportBtn.setDisable(true);
-        }
 
         Button logoutBtn = new Button("🚪 Logout");
 
@@ -207,23 +259,6 @@ public class Dashboard {
         });
 
         sidebar.getChildren().addAll(productBtn, productMenuBox, reportBtn, logoutBtn);
-
-        if(role == UserRole.ADMIN){
-
-            Button userBtn = new Button("👥 Users");
-
-            userBtn.setOnAction(e -> {
-                VBox adminPanel = UserManagement.createPanel();
-
-                Button backBtn = new Button("⬅ Back to Dashboard");
-                backBtn.setOnAction(ev -> root.setCenter(mainContent));
-
-                VBox wrapper = new VBox(10, backBtn, adminPanel);
-                root.setCenter(wrapper);
-            });
-
-            sidebar.getChildren().add(userBtn);
-        }
 
         root.setLeft(sidebar);
 
@@ -243,6 +278,7 @@ public class Dashboard {
     }
 
     private void addProduct(){
+
         Dialog<Item> dialog = new Dialog<>();
         dialog.setTitle("Add Product");
 
@@ -283,7 +319,7 @@ public class Dashboard {
                             Double.parseDouble(priceField.getText())
                     );
                 }catch(Exception e){
-                    showError("Invalid price or quantity.");
+                    showError("Invalid input.");
                 }
             }
             return null;
@@ -292,26 +328,7 @@ public class Dashboard {
         dialog.showAndWait().ifPresent(item -> {
             inventory.add(item);
             updateTotalValue();
-            BackupManager.saveBackup(inventory);
         });
-    }
-
-    private void stockIn(){
-        Item selected = table.getSelectionModel().getSelectedItem();
-        if(selected == null){ showError("Please select a product."); return; }
-        StockEditor.stockIn(selected);
-        table.refresh();
-        updateTotalValue();
-    }
-
-    private void stockOut(){
-        Item selected = table.getSelectionModel().getSelectedItem();
-        if(selected == null){ showError("Please select a product."); return; }
-        StockEditor.stockOut(selected);
-        table.refresh();
-        updateTotalValue();
-        BackupManager.saveBackup(inventory);
-        LowStockAlert.checkLowStock(inventory);
     }
 
     private void sellItem(){
@@ -321,31 +338,23 @@ public class Dashboard {
 
         VBox content = new VBox(10);
 
-        // 🔽 Supplier dropdown
         ComboBox<String> supplierBox = new ComboBox<>();
-
-        // 🔽 Item dropdown
         ComboBox<Item> itemBox = new ComboBox<>();
 
-        // 🔢 Quantity input
         TextField qtyField = new TextField();
         qtyField.setPromptText("Quantity");
 
-        // 🛒 Cart display
         TextArea cartArea = new TextArea();
         cartArea.setEditable(false);
 
-        // store cart
         java.util.Map<Item, Integer> cart = new java.util.HashMap<>();
 
-        // 🔥 Fill suppliers
         for(Item item : inventory){
             if(!supplierBox.getItems().contains(item.supplier)){
                 supplierBox.getItems().add(item.supplier);
             }
         }
 
-        // 🔄 When supplier selected → filter items
         supplierBox.setOnAction(e -> {
             itemBox.getItems().clear();
 
@@ -356,7 +365,6 @@ public class Dashboard {
             }
         });
 
-        // 🔥 Display item names nicely
         itemBox.setCellFactory(lv -> new ListCell<Item>() {
             @Override
             protected void updateItem(Item item, boolean empty){
@@ -373,7 +381,6 @@ public class Dashboard {
             }
         });
 
-        // ➕ Add to cart button
         Button addBtn = new Button("➕ Add Item");
 
         addBtn.setOnAction(e -> {
@@ -395,7 +402,6 @@ public class Dashboard {
 
                 cart.put(selectedItem, cart.getOrDefault(selectedItem, 0) + qty);
 
-                // update cart display
                 cartArea.clear();
 
                 for(Item i : cart.keySet()){
@@ -446,8 +452,6 @@ public class Dashboard {
 
                 table.refresh();
                 updateTotalValue();
-                BackupManager.saveBackup(inventory);
-                LowStockAlert.checkLowStock(inventory);
             }
 
             return null;
@@ -461,9 +465,6 @@ public class Dashboard {
         if(selected != null){
             inventory.remove(selected);
             updateTotalValue();
-            BackupManager.saveBackup(inventory);
-        }else{
-            showError("Please select a product.");
         }
     }
 
