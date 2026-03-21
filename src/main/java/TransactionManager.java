@@ -1,9 +1,10 @@
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
+import java.util.ArrayList;
 
 public class TransactionManager {
 
-    public static ObservableList<Transaction> transactions = FXCollections.observableArrayList();
+    static ArrayList<Transaction> transactions = new ArrayList<>();
 
     public static void log(String type, String product, int amount){
         Transaction t = new Transaction(type, product, amount);
@@ -34,21 +35,5 @@ public class TransactionManager {
     }
 
     public static void processSale(ObservableList<Item> inventory, String name, int amount) {
-
-        for(Item item : inventory){
-
-            if(item.name.equalsIgnoreCase(name)){
-
-                boolean success = processSale(item, amount);
-
-                if(!success){
-                    System.out.println("Sale failed.");
-                }
-
-                return;
-            }
-        }
-
-        System.out.println("Item not found.");
     }
 }

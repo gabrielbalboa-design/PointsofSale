@@ -20,10 +20,15 @@ public class UserManager {
 
     public static String createUser(String username, UserRole role){
 
+        for(User u : users){
+            if(u.username.equalsIgnoreCase(username)){
+                return null;
+            }
+        }
+
         String password = PasswordGenerator.generate();
 
         User user = new User(username,password,role);
-        user.isGeneratedPassword = true;
 
         users.add(user);
 
@@ -31,7 +36,6 @@ public class UserManager {
 
         return password;
     }
-
     public static User login(String username,String password){
 
         for(User user : users){
@@ -45,7 +49,6 @@ public class UserManager {
         return null;
     }
 
-    /* ---------- SAVE USERS ---------- */
 
     public static void saveUsers(){
 
@@ -58,7 +61,7 @@ public class UserManager {
                                 user.password + "," +
                                 user.role + "," +
                                 user.firstLogin + "," +
-                                user.isGeneratedPassword
+                                user.originalPassword
                 );
 
             }
@@ -69,7 +72,6 @@ public class UserManager {
 
     }
 
-    /* ---------- LOAD USERS ---------- */
 
     public static void loadUsers(){
 
@@ -89,20 +91,22 @@ public class UserManager {
                 String password = parts[1];
                 UserRole role = UserRole.valueOf(parts[2]);
                 boolean firstLogin = Boolean.parseBoolean(parts[3]);
-                boolean isGenerated = parts.length > 4 && Boolean.parseBoolean(parts[4]);
 
-                User user = new User(username,password,role);
+                User user = new User(username, password, role);
                 user.firstLogin = firstLogin;
-                user.isGeneratedPassword = isGenerated;
+
+                if(parts.length > 4){
+                    user.originalPassword = parts[4];
+                } else {
+                    user.originalPassword = password;
+                }
 
                 users.add(user);
-
             }
 
         }catch(Exception e){
             e.printStackTrace();
         }
-
     }
 
 }

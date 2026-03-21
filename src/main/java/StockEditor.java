@@ -1,23 +1,13 @@
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert;
-import javafx.collections.ObservableList;
+
+import java.util.ArrayList;
 import java.util.Optional;
+import javafx.collections.ObservableList;
 
 public class StockEditor {
 
-    public static void stockIn(Item item, UserRole role){
-        item.addStock(1);
-        TransactionManager.log("STOCK IN", item.name, 1);
-    }
-
-    public static void stockOut(Item item, UserRole role){
-        if(item.quantity > 0){
-            item.quantity -= 1;
-            TransactionManager.log("STOCK OUT", item.name, 1);
-        }
-    }
-
-    public static void stockInWithInput(Item item, UserRole role){
+    public static void stockIn(Item item) {
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Stock In");
@@ -25,23 +15,16 @@ public class StockEditor {
 
         Optional<String> result = dialog.showAndWait();
 
-        if(result.isPresent()){
-            try{
-                int amount = Integer.parseInt(result.get());
-                item.addStock(amount);
-                TransactionManager.log("STOCK IN", item.name, amount);
-            }catch(Exception e){
-                showError("Invalid input.");
-            }
+        if (result.isPresent()) {
+            int amount = Integer.parseInt(result.get());
+
+            item.addStock(amount);
+
+            TransactionManager.log("STOCK IN", item.name, amount);
         }
     }
 
-    public static void stockOutWithInput(Item item, UserRole role){
-
-        if(role == UserRole.STAFF){
-            showError("No permission.");
-            return;
-        }
+    public static void stockOut(Item item) {
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Stock Out");
@@ -49,24 +32,24 @@ public class StockEditor {
 
         Optional<String> result = dialog.showAndWait();
 
-        if(result.isPresent()){
-            try{
-                int amount = Integer.parseInt(result.get());
+        if (result.isPresent()) {
+            int amount = Integer.parseInt(result.get());
 
-                if(item.quantity >= amount){
-                    item.quantity -= amount;
-                    TransactionManager.log("STOCK OUT", item.name, amount);
-                }else{
-                    showError("Not enough stock.");
-                }
+            if (item.quantity >= amount) {
 
-            }catch(Exception e){
-                showError("Invalid input.");
+                item.quantity -= amount;
+
+                TransactionManager.log("STOCK OUT", item.name, amount);
+
+            } else {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setHeaderText("Not enough stock.");
+                alert.showAndWait();
             }
         }
     }
 
-    public static void sellItem(ObservableList<Item> inventory, Item item, UserRole role){
+    public static void sellItem(ObservableList<Item> inventory, Item item) {
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Sell Item");
@@ -74,19 +57,11 @@ public class StockEditor {
 
         Optional<String> result = dialog.showAndWait();
 
-        if(result.isPresent()){
-            try{
-                int amount = Integer.parseInt(result.get());
-                TransactionManager.processSale(inventory, item.name, amount);
-            }catch(Exception e){
-                showError("Invalid input.");
-            }
+        if (result.isPresent()) {
+            int amount = Integer.parseInt(result.get());
+
+            TransactionManager.processSale((ObservableList<Item>) inventory, item.name, amount);
         }
     }
-
-    private static void showError(String msg){
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText(msg);
-        alert.showAndWait();
-    }
 }
+

@@ -25,14 +25,27 @@ public class UserManagement{
                 return;
             }
 
-            String password = UserManager.createUser(username,role);
+            String password = UserManager.createUser(username, role);
 
-            new Alert(Alert.AlertType.INFORMATION,
-                    "User created.\nUsername: " + username +
-                            "\nPassword: " + password
-            ).show();
+            if(password == null){
+                new Alert(Alert.AlertType.ERROR,"Username already exists!").show();
+                return;
+            }
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Account Created");
+            alert.setHeaderText("New User Created");
+
+            alert.setContentText(
+                    "Username: " + username + "\n" +
+                            "Password: " + password
+            );
+
+            alert.showAndWait();
+
+            usernameField.clear();
+            roleBox.setValue(null);
         });
-
         VBox layout = new VBox(10,title,usernameField,roleBox,createBtn);
 
         return layout;

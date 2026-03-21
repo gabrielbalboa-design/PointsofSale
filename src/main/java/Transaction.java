@@ -2,31 +2,30 @@ import java.time.LocalDateTime;
 
 public class Transaction {
 
-    public int quantity;
     String type;
     String product;
-    int amount;
+    int quantity;
     double total;
     LocalDateTime timestamp;
 
-    public Transaction(String type, String product, int amount){
+    public Transaction(String type, String product, int quantity){
         this.type = type;
         this.product = product;
-        this.amount = amount;
+        this.quantity = quantity;
         this.total = 0;
         this.timestamp = LocalDateTime.now();
     }
 
-    public Transaction(String type, String product, int amount, double total){
+    public Transaction(String type, String product, int quantity, double total){
         this.type = type;
         this.product = product;
-        this.amount = amount;
+        this.quantity = quantity;
         this.total = total;
         this.timestamp = LocalDateTime.now();
     }
 
     @Override
     public String toString(){
-        return timestamp + " | " + type + " | " + product + " | " + amount + " | " + total;
+        return timestamp + " | " + type + " | " + product + " | " + quantity + " | " + total;
     }
 }

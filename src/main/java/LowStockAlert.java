@@ -4,8 +4,6 @@ import javafx.collections.ObservableList;
 
 public class LowStockAlert {
 
-    private static boolean alreadyShown = false;
-
     public static void checkLowStock(ObservableList<Item> inventory){
 
         StringBuilder lowStockList = new StringBuilder();
@@ -14,20 +12,24 @@ public class LowStockAlert {
 
             if(item.isLowStock()){
 
-                lowStockList.append("Product: ").append(item.name)
-                        .append("\nQuantity: ").append(item.quantity).append(" left")
-                        .append("\nSupplier: ").append(item.supplier)
-                        .append("\nContact: ").append(item.supplierContact)
+                lowStockList.append(item.name)
+                        .append(" (")
+                        .append(item.quantity)
+                        .append(" left)\n")
+                        .append("Supplier: ")
+                        .append(item.supplier)
+                        .append("\nContact: ")
+                        .append(item.supplierContact)
                         .append("\n\n");
             }
         }
 
-        if(lowStockList.length() > 0 && !alreadyShown){
+        if(lowStockList.length() > 0){
 
             Alert alert = new Alert(Alert.AlertType.WARNING);
 
             alert.setTitle("Low Stock Warning");
-            alert.setHeaderText("⚠ The following items are running low:");
+            alert.setHeaderText("The following items are running low:");
 
             TextArea area = new TextArea(lowStockList.toString());
             area.setEditable(false);
@@ -36,12 +38,6 @@ public class LowStockAlert {
             alert.getDialogPane().setContent(area);
 
             alert.showAndWait();
-
-            alreadyShown = true;
-        }
-
-        if(lowStockList.length() == 0){
-            alreadyShown = false;
         }
     }
 }

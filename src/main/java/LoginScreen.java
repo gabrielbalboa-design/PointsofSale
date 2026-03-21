@@ -22,25 +22,42 @@ public class LoginScreen {
             String username = usernameField.getText();
             String password = passwordField.getText();
 
-            User user = UserManager.login(username, password);
+            User user = UserManager.login(username,password);
 
-            if(user != null){
+            if(user == null){
 
-                stage.setScene(new Scene(new Dashboard(user.role).getView()));
-
-            } else {
-
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setHeaderText("Login Failed");
-                alert.setContentText("Invalid username or password.");
-                alert.showAndWait();
+                new Alert(Alert.AlertType.ERROR,"Invalid login").show();
+                return;
 
             }
+
+            if(user.firstLogin){
+
+                TextInputDialog dialog = new TextInputDialog();
+                dialog.setHeaderText("Change Password");
+
+                dialog.showAndWait().ifPresent(newPass -> {
+
+                    user.password = newPass;
+                    user.firstLogin = false;
+
+                    UserManager.saveUsers();
+                });
+
+            }
+
+            Dashboard dashboard = new Dashboard(user.role);
+
+            Scene dashboardScene = new Scene(dashboard.getView(),600,400);
+
+            stage.setScene(dashboardScene);
 
         });
 
         VBox layout = new VBox(15,title,usernameField,passwordField,loginBtn);
 
         return new Scene(layout,300,200);
+
     }
+
 }
