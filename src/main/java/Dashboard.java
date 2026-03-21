@@ -83,6 +83,7 @@ public class Dashboard {
                 plus.setOnMouseReleased(e -> stopPlus());
                 plus.setOnMouseExited(e -> stopPlus());
 
+
                 minus.setOnMousePressed(e -> {
                     Item item = getTableView().getItems().get(getIndex());
 
@@ -122,6 +123,9 @@ public class Dashboard {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : box);
             }
+            {
+            plus.setDisable(role == UserRole.STAFF);
+            minus.setDisable(role == UserRole.STAFF);}
         });
 
         table.getColumns().addAll(nameCol, supplierCol, priceCol, qtyCol, totalCol, actionCol);
@@ -167,9 +171,8 @@ public class Dashboard {
                 new javafx.beans.property.SimpleStringProperty(data.getValue().product));
 
         TableColumn<Transaction, Integer> amountCol = new TableColumn<>("Qty");
-        amountCol.setCellValueFactory(data -> {
-            return new javafx.beans.property.SimpleIntegerProperty(data.getValue().amount).asObject();
-        });
+        amountCol.setCellValueFactory(data ->
+                new javafx.beans.property.SimpleIntegerProperty(data.getValue().quantity).asObject());
 
         TableColumn<Transaction, Double> totalSaleCol = new TableColumn<>("Total");
         totalSaleCol.setCellValueFactory(data ->
@@ -199,6 +202,35 @@ public class Dashboard {
         sidebar.setStyle("-fx-padding:10; -fx-background-color:#eeeeee;");
 
         Button productBtn = new Button("📦 Products");
+        Button supplierBtn = new Button("🏭 Suppliers");
+
+        supplierBtn.setDisable(role == UserRole.STAFF); // 🔥 staff cannot add
+
+        supplierBtn.setOnAction(e -> {
+
+            Dialog<Void> dialog = new Dialog<>();
+            dialog.setTitle("Add Supplier");
+
+            TextField nameField = new TextField();
+            TextField contactField = new TextField();
+
+            VBox box = new VBox(10,
+                    new Label("Supplier Name"), nameField,
+                    new Label("Contact"), contactField
+            );
+
+            dialog.getDialogPane().setContent(box);
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            dialog.setResultConverter(btn -> {
+                if(btn == ButtonType.OK){
+                    SupplierManager.addSupplier(nameField.getText(), contactField.getText());
+                }
+                return null;
+            });
+
+            dialog.showAndWait();
+        });
 
         productMenuBox = new VBox(5);
 
@@ -207,6 +239,22 @@ public class Dashboard {
         Button sellBtn = new Button("Sell");
         Button stockOutBtn = new Button("Stock Out");
         Button deleteBtn = new Button("Delete Product");
+
+        boolean isAdmin = role == UserRole.ADMIN;
+        boolean isManager = role == UserRole.MANAGER;
+
+        boolean isStaff = role == UserRole.STAFF;
+
+        addProductBtn.setDisable(isStaff);
+        deleteBtn.setDisable(isStaff);
+
+        stockInBtn.setDisable(false);
+        stockOutBtn.setDisable(false);
+        sellBtn.setDisable(false);
+
+        Button reportBtn = new Button("📊 Reports");
+        reportBtn.setDisable(isStaff);
+        reportBtn.setOnAction(e -> ReportGenerator.generateReport(inventory));
 
         productMenuBox.getChildren().addAll(
                 addProductBtn, stockInBtn, sellBtn, stockOutBtn, deleteBtn
@@ -226,9 +274,10 @@ public class Dashboard {
         stockInBtn.setOnAction(e -> {
             Item selected = table.getSelectionModel().getSelectedItem();
             if(selected != null){
-                StockEditor.stockInWithInput(selected);
+                StockEditor.stockInWithInput(selected,role);
                 table.refresh();
                 updateTotalValue();
+                LowStockAlert.checkLowStock(inventory);
             } else {
                 showError("Please select a product.");
             }
@@ -237,9 +286,10 @@ public class Dashboard {
         stockOutBtn.setOnAction(e -> {
             Item selected = table.getSelectionModel().getSelectedItem();
             if(selected != null){
-                StockEditor.stockOutWithInput(selected);
+                StockEditor.stockOutWithInput(selected,role);
                 table.refresh();
                 updateTotalValue();
+                LowStockAlert.checkLowStock(inventory);
             } else {
                 showError("Please select a product.");
             }
@@ -248,8 +298,6 @@ public class Dashboard {
         sellBtn.setOnAction(e -> sellItem());
         deleteBtn.setOnAction(e -> deleteProduct());
 
-        Button reportBtn = new Button("📊 Reports");
-        reportBtn.setOnAction(e -> ReportGenerator.generateReport(inventory));
 
         Button logoutBtn = new Button("🚪 Logout");
 
@@ -258,7 +306,64 @@ public class Dashboard {
             stage.setScene(LoginScreen.createLoginScene(stage));
         });
 
+        if(role == UserRole.ADMIN){
+
+            Button userBtn = new Button("👥 Users");
+
+            userBtn.setOnAction(e -> {
+
+                TableView<User> userTable = new TableView<>();
+
+                TableColumn<User, String> usernameCol = new TableColumn<>("Username");
+                usernameCol.setCellValueFactory(data ->
+                        new javafx.beans.property.SimpleStringProperty(data.getValue().username));
+
+                TableColumn<User, String> passwordCol = new TableColumn<>("Password");
+                passwordCol.setCellValueFactory(data ->
+                        new javafx.beans.property.SimpleStringProperty(data.getValue().password));
+
+                passwordCol.setCellFactory(col -> new TableCell<User, String>() {
+                    @Override
+                    protected void updateItem(String item, boolean empty){
+                        super.updateItem(item, empty);
+
+                        if(empty){
+                            setText(null);
+                            return;
+                        }
+
+                        User user = getTableView().getItems().get(getIndex());
+
+                        if(user.isGeneratedPassword){
+                            setText(user.password);
+                        } else {
+                            setText("*****");
+                        }
+                    }
+                });
+
+                TableColumn<User, String> roleCol = new TableColumn<>("Role");
+                roleCol.setCellValueFactory(data ->
+                        new javafx.beans.property.SimpleStringProperty(data.getValue().role.toString()));
+
+                userTable.getColumns().addAll(usernameCol, passwordCol, roleCol);
+                userTable.setItems(FXCollections.observableArrayList(UserManager.users));
+
+                VBox adminPanel = UserManagement.createPanel();
+
+                Button backBtn = new Button("⬅ Back to Dashboard");
+                backBtn.setOnAction(ev -> root.setCenter(mainContent));
+
+                VBox layout = new VBox(10, backBtn, adminPanel, new Label("Users"), userTable);
+
+                root.setCenter(layout);
+            });
+
+            sidebar.getChildren().add(userBtn);
+        }
+
         sidebar.getChildren().addAll(productBtn, productMenuBox, reportBtn, logoutBtn);
+        sidebar.getChildren().add(supplierBtn);
 
         root.setLeft(sidebar);
 
@@ -286,10 +391,18 @@ public class Dashboard {
         dialog.getDialogPane().getButtonTypes().addAll(addButton, ButtonType.CANCEL);
 
         TextField nameField = new TextField();
-        TextField supplierField = new TextField();
+        ComboBox<String> supplierField = new ComboBox<>(SupplierManager.supplierNames);
+
         TextField contactField = new TextField();
+        contactField.setEditable(false);
+
         TextField priceField = new TextField();
         TextField qtyField = new TextField();
+
+        supplierField.setOnAction(e -> {
+            String selected = supplierField.getValue();
+            contactField.setText(SupplierManager.getContact(selected));
+        });
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -297,12 +410,16 @@ public class Dashboard {
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
+
         grid.add(new Label("Supplier:"), 0, 1);
         grid.add(supplierField, 1, 1);
+
         grid.add(new Label("Contact:"), 0, 2);
         grid.add(contactField, 1, 2);
+
         grid.add(new Label("Price:"), 0, 3);
         grid.add(priceField, 1, 3);
+
         grid.add(new Label("Quantity:"), 0, 4);
         grid.add(qtyField, 1, 4);
 
@@ -313,7 +430,7 @@ public class Dashboard {
                 try{
                     return new Item(
                             nameField.getText(),
-                            supplierField.getText(),
+                            supplierField.getValue(),
                             contactField.getText(),
                             Integer.parseInt(qtyField.getText()),
                             Double.parseDouble(priceField.getText())
@@ -328,6 +445,7 @@ public class Dashboard {
         dialog.showAndWait().ifPresent(item -> {
             inventory.add(item);
             updateTotalValue();
+            LowStockAlert.checkLowStock(inventory);
         });
     }
 
@@ -355,15 +473,6 @@ public class Dashboard {
             }
         }
 
-        supplierBox.setOnAction(e -> {
-            itemBox.getItems().clear();
-
-            for(Item item : inventory){
-                if(item.supplier.equals(supplierBox.getValue())){
-                    itemBox.getItems().add(item);
-                }
-            }
-        });
 
         itemBox.setCellFactory(lv -> new ListCell<Item>() {
             @Override
@@ -452,6 +561,7 @@ public class Dashboard {
 
                 table.refresh();
                 updateTotalValue();
+                LowStockAlert.checkLowStock(inventory);
             }
 
             return null;

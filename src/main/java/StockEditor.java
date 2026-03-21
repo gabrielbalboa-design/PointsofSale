@@ -5,19 +5,19 @@ import java.util.Optional;
 
 public class StockEditor {
 
-    public static void stockIn(Item item){
+    public static void stockIn(Item item, UserRole role){
         item.addStock(1);
         TransactionManager.log("STOCK IN", item.name, 1);
     }
 
-    public static void stockOut(Item item){
+    public static void stockOut(Item item, UserRole role){
         if(item.quantity > 0){
             item.quantity -= 1;
             TransactionManager.log("STOCK OUT", item.name, 1);
         }
     }
 
-    public static void stockInWithInput(Item item){
+    public static void stockInWithInput(Item item, UserRole role){
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Stock In");
@@ -36,7 +36,12 @@ public class StockEditor {
         }
     }
 
-    public static void stockOutWithInput(Item item){
+    public static void stockOutWithInput(Item item, UserRole role){
+
+        if(role == UserRole.STAFF){
+            showError("No permission.");
+            return;
+        }
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Stock Out");
@@ -61,7 +66,7 @@ public class StockEditor {
         }
     }
 
-    public static void sellItem(ObservableList<Item> inventory, Item item){
+    public static void sellItem(ObservableList<Item> inventory, Item item, UserRole role){
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Sell Item");

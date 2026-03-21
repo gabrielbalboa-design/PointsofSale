@@ -4,6 +4,8 @@ public class User {
     String password;
     UserRole role;
     boolean firstLogin;
+    boolean isGeneratedPassword;
+
 
     public User(String username, String password, UserRole role){
 
@@ -11,6 +13,7 @@ public class User {
         this.password = password;
         this.role = role;
         this.firstLogin = true;
+        this.isGeneratedPassword = true;
 
     }
 }

@@ -18,21 +18,18 @@ public class UserManager {
 
     }
 
-    public static void createUser(String username, UserRole role){
+    public static String createUser(String username, UserRole role){
 
         String password = PasswordGenerator.generate();
 
         User user = new User(username,password,role);
+        user.isGeneratedPassword = true;
 
         users.add(user);
 
         saveUsers();
 
-        System.out.println("Account created:");
-        System.out.println("Username: " + username);
-        System.out.println("Password: " + password);
-        System.out.println("Role: " + role);
-
+        return password;
     }
 
     public static User login(String username,String password){
@@ -60,7 +57,8 @@ public class UserManager {
                         user.username + "," +
                                 user.password + "," +
                                 user.role + "," +
-                                user.firstLogin
+                                user.firstLogin + "," +
+                                user.isGeneratedPassword
                 );
 
             }
@@ -91,9 +89,11 @@ public class UserManager {
                 String password = parts[1];
                 UserRole role = UserRole.valueOf(parts[2]);
                 boolean firstLogin = Boolean.parseBoolean(parts[3]);
+                boolean isGenerated = parts.length > 4 && Boolean.parseBoolean(parts[4]);
 
                 User user = new User(username,password,role);
                 user.firstLogin = firstLogin;
+                user.isGeneratedPassword = isGenerated;
 
                 users.add(user);
 

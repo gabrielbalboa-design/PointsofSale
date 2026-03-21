@@ -21,18 +21,16 @@ public class UserManagement{
             UserRole role = roleBox.getValue();
 
             if(username.isEmpty() || role == null){
-
                 new Alert(Alert.AlertType.ERROR,"Enter username and role").show();
                 return;
-
             }
 
-            UserManager.createUser(username,role);
+            String password = UserManager.createUser(username,role);
 
             new Alert(Alert.AlertType.INFORMATION,
-                    "User created.\nCheck console for password."
+                    "User created.\nUsername: " + username +
+                            "\nPassword: " + password
             ).show();
-
         });
 
         VBox layout = new VBox(10,title,usernameField,roleBox,createBtn);
