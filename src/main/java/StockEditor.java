@@ -60,8 +60,9 @@ public class StockEditor {
         if (result.isPresent()) {
             int amount = Integer.parseInt(result.get());
 
-            TransactionManager.processSale((ObservableList<Item>) inventory, item.name, amount);
+            TransactionManager.processSale(item, amount);
         }
     }
+
 }
 

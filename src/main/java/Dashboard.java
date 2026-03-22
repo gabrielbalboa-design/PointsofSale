@@ -9,9 +9,9 @@ import javafx.stage.Stage;
 import java.util.Optional;
 
 public class Dashboard {
-
+    ObservableList<Transaction> salesData = FXCollections.observableArrayList();
     BorderPane root;
-
+    TableView<Transaction> salesTable = new TableView<>();
     TableView<Item> table = new TableView<>();
     ObservableList<Item> inventory = FXCollections.observableArrayList();
     Label totalInventoryValue = new Label();
@@ -36,7 +36,25 @@ public class Dashboard {
         TableColumn<Item, String> supplierCol = new TableColumn<>("Supplier");
         supplierCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue().supplier));
+        TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(data ->
+                new SimpleStringProperty(data.getValue().type));
 
+        TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
+        productCol.setCellValueFactory(data ->
+                new SimpleStringProperty(data.getValue().product));
+
+        TableColumn<Transaction, Integer> qtyCol2 = new TableColumn<>("Qty");
+        qtyCol2.setCellValueFactory(data ->
+                new SimpleIntegerProperty(data.getValue().quantity).asObject());
+
+        TableColumn<Transaction, Double> totalCol2 = new TableColumn<>("Total");
+        totalCol2.setCellValueFactory(data ->
+                new SimpleDoubleProperty(data.getValue().total).asObject());
+
+        salesTable.getColumns().addAll(typeCol, productCol, qtyCol2, totalCol2);
+        salesData.addAll(TransactionManager.transactions);
+        salesTable.setItems(salesData);
         supplierCol.setCellFactory(col -> new TableCell<Item, String>() {
 
             private final Button btn = new Button();
@@ -87,7 +105,6 @@ public class Dashboard {
             private final Button minus = new Button("-");
             private final HBox box = new HBox(5, plus, minus);
             {
-                // ✅ THIS BLOCK FIXES YOUR ERROR
 
                 plus.setOnAction(e -> {
                     Item item = getTableView().getItems().get(getIndex());
@@ -153,7 +170,16 @@ public class Dashboard {
         Button toggleSidebarBtn = new Button("☰");
         toggleSidebarBtn.setOnAction(e -> toString());
 
-        mainContent = new VBox(10, toggleSidebarBtn, searchField, table, totalInventoryValue);
+        Label salesLabel = new Label("Sales Transactions");
+
+        mainContent = new VBox(10,
+                toggleSidebarBtn,
+                searchField,
+                table,
+                totalInventoryValue,
+                salesLabel,
+                salesTable
+        );
         root.setCenter(mainContent);
 
         sidebar = new VBox(10);
@@ -542,6 +568,8 @@ public class Dashboard {
 
                 table.refresh();
                 updateTotalValue();
+                salesData.clear();
+                salesData.addAll(TransactionManager.transactions);
                 BackupManager.saveBackup(inventory);
                 LowStockAlert.checkLowStock(inventory);
             }
